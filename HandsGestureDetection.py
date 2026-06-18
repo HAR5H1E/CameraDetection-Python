@@ -46,7 +46,7 @@ def GetResult(results,output,timestamp):
 options = GestureRecognizerOptions(
             base_options = BaseOptions("./Task/gesture_recognizer.task"),
             running_mode = VisionRunningMode.LIVE_STREAM,
-            num_hands = 2,
+            num_hands = 1,
             result_callback = GetResult
 )
 
@@ -101,12 +101,12 @@ while True:
 
             volume = np.interp(diff,[30,160],[0,100])
 
-            print(stopMusic)
+            
             if stopMusic:
 
                 volume = 0
             
-            print(volume)
+            
             if  (VolThread is None or not VolThread.is_alive()):
 
                 VolThread = threading.Thread(target=volumeControl,args =(volume,))
