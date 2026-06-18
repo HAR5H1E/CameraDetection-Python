@@ -59,7 +59,6 @@ while True:
     if cv.waitKey(1) == ord('q'):
         break
 
-    print(threshHold)
 
 cap.release()
 cv.destroyAllWindows()

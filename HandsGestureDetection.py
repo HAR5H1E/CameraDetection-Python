@@ -2,7 +2,6 @@ import cv2 as cv
 import numpy as np
 import mediapipe as mp
 import time
-import osascript
 import math
 import threading
 import osascript
@@ -10,10 +9,18 @@ import osascript
 
 latestLandMark = None
 gestureLandmark = None
+handLabelLandmark = None
 prevVol = None
 VolThread = None
 
 cap = cv.VideoCapture(0)
+
+
+cv.namedWindow("Detector", cv.WINDOW_NORMAL | cv.WINDOW_FREERATIO)
+
+
+cv.resizeWindow("Detector",600, 600)
+
 
 BaseOptions = mp.tasks.BaseOptions
 GestureRecognizer = mp.tasks.vision.GestureRecognizer
@@ -35,10 +42,15 @@ def volumeControl(volume):
 
 
 def GetResult(results,output,timestamp):
-    global latestLandMark,gestureLandmark
+    global latestLandMark,gestureLandmark, handLabelLandmark
     if results.gestures and results.hand_landmarks:
         latestLandMark = results.hand_landmarks
         gestureLandmark = results.gestures[0][0].category_name
+        handLabelLandmark = results.handedness[0][0].category_name
+        if handLabelLandmark == "Right":
+            handLabelLandmark = "Left"
+        else:
+            handLabelLandmark = "Right"
     else:
         latestLandMark = None
         gestureLandmark = None
@@ -57,7 +69,10 @@ for _ in range(30):
     cap.read()
 
 stopMusic = False
+stopPlay = False
 while True:
+    if stopPlay == True:
+        break
     succes , Frame = cap.read()
 
     if cap.isOpened() == False:
@@ -80,37 +95,38 @@ while True:
 
 
     if latestLandMark and gestureLandmark:
-        pixel = []
+        
         h,w,_ = frameShow.shape
         for lat in latestLandMark:
 
-          
+            pixel = []
 
-            Thumb = lat[4]
-            Finger = lat[8]
+            if handLabelLandmark == "Right":
+                Thumb = lat[4]
+                Finger = lat[8]
 
-            tx,ty = int(Thumb.x * w),int(Thumb.y * h)
-            fx,fy = int(Finger.x * w), int(Finger.y * h)
+                tx,ty = int(Thumb.x * w),int(Thumb.y * h)
+                fx,fy = int(Finger.x * w), int(Finger.y * h)
 
-            cv.circle(frameShow,(tx,ty),4,(0,255,0),cv.FILLED)
-            cv.circle(frameShow,(fx,fy),4,(0,255,0),cv.FILLED)
-            cv.line(frameShow,(fx,fy),(tx,ty),(0,255,0),3)
+                cv.circle(frameShow,(tx,ty),4,(0,255,0),cv.FILLED)
+                cv.circle(frameShow,(fx,fy),4,(0,255,0),cv.FILLED)
+                cv.line(frameShow,(fx,fy),(tx,ty),(0,255,0),3)
 
-            diff = math.sqrt((fx - tx)**2 + (fy - ty)**2)
+                diff = math.sqrt((fx - tx)**2 + (fy - ty)**2)
 
 
-            volume = np.interp(diff,[30,160],[0,100])
+                volume = np.interp(diff,[30,160],[0,100])
 
-            
-            if stopMusic:
+                
+                if stopMusic:
 
-                volume = 0
-            
-            
-            if  (VolThread is None or not VolThread.is_alive()):
+                    volume = 0
+                
+                
+                if  (VolThread is None or not VolThread.is_alive()):
 
-                VolThread = threading.Thread(target=volumeControl,args =(volume,))
-                VolThread.start()
+                    VolThread = threading.Thread(target=volumeControl,args =(volume,))
+                    VolThread.start()
 
 
             for lm in lat:
@@ -124,14 +140,18 @@ while True:
 
             (xx,yy,bw,bh)=cv.boundingRect(pixel_arr)
 
-            #cv.rectangle(frameShow,(xx,yy),(xx+bw,yy+bh),(0,255,0),3)
+            cv.rectangle(frameShow,(xx,yy),(xx+bw,yy+bh),(0,255,0),3)
             cv.putText(frameShow,gestureLandmark,(xx,yy - 10),cv.FONT_HERSHEY_COMPLEX,0.8,(0,255,0),2)
-            if gestureLandmark == "Closed_Fist":
+            if gestureLandmark == "Closed_Fist" and handLabelLandmark == "Right":
                 
                 stopMusic = True
             else:
 
                 stopMusic = False
+
+            
+            if gestureLandmark == "Open_Palm" and handLabelLandmark == "Right":
+                stopPlay = True
 
         
 
